@@ -3,9 +3,9 @@
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-require 'PHPMailer/Exception.php';
-require 'PHPMailer/PHPMailer.php';
-require 'PHPMailer/SMTP.php';
+require 'aeroductos/bat/PHPMailer/Exception.php';
+require 'aeroductos/bat/PHPMailer/PHPMailer.php';
+require 'aeroductos/bat/PHPMailer/SMTP.php';
 
 $mail = new PHPMailer(true);
 
