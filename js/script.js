@@ -245,7 +245,7 @@
 			var regularConstraintsMessages = [
 				{
 					type: regula.Constraint.Required,
-					newMessage: "The text field is required."
+					newMessage: "El campo de texto es obligatorio."
 				},
 				{
 					type: regula.Constraint.Email,
