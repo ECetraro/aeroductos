@@ -1,147 +1,52 @@
 <?php
+// Tu código PHP aquí
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
 
-$formConfigFile = file_get_contents("rd-mailform.config.json");
-$formConfig = json_decode($formConfigFile, true);
+require 'PHPMailer/Exception.php';
+require 'PHPMailer/PHPMailer.php';
+require 'PHPMailer/SMTP.php';
 
-date_default_timezone_set('Etc/UTC');
+$mail = new PHPMailer(true);
 
 try {
-    require './phpmailer/PHPMailerAutoload.php';
+    //Server settings
+    $mail->SMTPDebug = 0;                      // Enable verbose debug output
+    $mail->isSMTP();                            // Send using SMTP
+    $mail->Host       = 'smtp.gmail.com';      // Set the SMTP server to send through
+    $mail->SMTPAuth   = true;                   // Enable SMTP authentication
+    $mail->Username   = 'ezequiel.cetraro@gmail.com'; // SMTP username
+    $mail->Password   = 'zzdskouhkgvmyvug';     // SMTP password
+    $mail->SMTPSecure = 'tls';                  // Enable implicit TLS encryption
+    $mail->Port       = 587;                    // TCP port to connect to
 
-    $recipients = $formConfig['recipientEmail'];
+    // Recipients
+    $mail->setFrom('ezequiel.cetraro@gmail.com', 'Contacto Aeroductos');
+    $mail->addAddress('ezequiel.cetraro@gmail.com', 'Contacto Aeroductos'); // Add a recipient
 
-    preg_match_all("/([\w-]+(?:\.[\w-]+)*)@((?:[\w-]+\.)*\w[\w-]{0,66})\.([a-z]{2,6}(?:\.[a-z]{2})?)/", $recipients, $addresses, PREG_OFFSET_CAPTURE);
+    // Captura de datos del formulario
+    $name = $_POST['name'];
+    $email = $_POST['email'];
+    $telefono = $_POST['telefono'];
+    $consulta = $_POST['consulta'];
 
-    if (!count($addresses[0])) {
-        die('MF001');
-    }
+    // Content
+    $mail->isHTML(true); // Set email format to HTML
+    $mail->Subject = 'Contacto Aeroductos';
 
-    function getRemoteIPAddress() {
-        if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
-            return $_SERVER['HTTP_CLIENT_IP'];
+    // Cuerpo del mensaje con los datos del formulario
+    $mail->Body = "<strong>Nombre:</strong> $name<br>
+                   <strong>Email:</strong> $email<br>
+                   <strong>Teléfono:</strong> $telefono<br>
+                   <strong>Consulta:</strong> $consulta";
 
-        } else if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-            return $_SERVER['HTTP_X_FORWARDED_FOR'];
-        }
-        return $_SERVER['REMOTE_ADDR'];
-    }
-
-    if (preg_match('/^(127\.|192\.168\.|::1)/', getRemoteIPAddress())) {
-        die('MF002');
-    }
-
-    $template = file_get_contents('rd-mailform.tpl');
-
-    if (isset($_POST['form-type'])) {
-        switch ($_POST['form-type']){
-            case 'contact':
-                $subject = 'A message from your site visitor';
-                break;
-            case 'subscribe':
-                $subject = 'Subscribe request';
-                break;
-            case 'order':
-                $subject = 'Order request';
-                break;
-            default:
-                $subject = 'A message from your site visitor';
-                break;
-        }
-    }else{
-        die('MF004');
-    }
-
-    if (isset($_POST['email'])) {
-        $template = str_replace(
-            array("<!-- #{FromState} -->", "<!-- #{FromEmail} -->"),
-            array("Email:", $_POST['email']),
-            $template);
-    }
-
-    if (isset($_POST['message'])) {
-        $template = str_replace(
-            array("<!-- #{MessageState} -->", "<!-- #{MessageDescription} -->"),
-            array("Message:", $_POST['message']),
-            $template);
-    }
-
-    // In a regular expression, the character \v is used as "anything", since this character is rare
-    preg_match("/(<!-- #\{BeginInfo\} -->)([^\v]*?)(<!-- #\{EndInfo\} -->)/", $template, $matches, PREG_OFFSET_CAPTURE);
-    foreach ($_POST as $key => $value) {
-        if ($key != "counter" && $key != "email" && $key != "message" && $key != "form-type" && $key != "g-recaptcha-response" && !empty($value)){
-            $info = str_replace(
-                array("<!-- #{BeginInfo} -->", "<!-- #{InfoState} -->", "<!-- #{InfoDescription} -->"),
-                array("", ucfirst($key) . ':', $value),
-                $matches[0][0]);
-
-            $template = str_replace("<!-- #{EndInfo} -->", $info, $template);
-        }
-    }
-
-    $template = str_replace(
-        array("<!-- #{Subject} -->", "<!-- #{SiteName} -->"),
-        array($subject, $_SERVER['SERVER_NAME']),
-        $template);
-
-    $mail = new PHPMailer();
-
-
-    if ($formConfig['useSmtp']) {
-        //Tell PHPMailer to use SMTP
-        $mail->isSMTP();
-
-        //Enable SMTP debugging
-        // 0 = off (for production use)
-        // 1 = client messages
-        // 2 = client and server messages
-        $mail->SMTPDebug = 0;
-
-        $mail->Debugoutput = 'html';
-
-        // Set the hostname of the mail server
-        $mail->Host = $formConfig['host'];
-
-        // Set the SMTP port number - likely to be 25, 465 or 587
-        $mail->Port = $formConfig['port'];
-
-        // Whether to use SMTP authentication
-        $mail->SMTPAuth = true;
-        $mail->SMTPSecure = "ssl";
-
-        // Username to use for SMTP authentication
-        $mail->Username = $formConfig['username'];
-
-        // Password to use for SMTP authentication
-        $mail->Password = $formConfig['password'];
-    }
-
-    $mail->From = $_POST['email'];
-
-    # Attach file
-    if (isset($_FILES['file']) &&
-        $_FILES['file']['error'] == UPLOAD_ERR_OK) {
-        $mail->AddAttachment($_FILES['file']['tmp_name'],
-            $_FILES['file']['name']);
-    }
-
-    if (isset($_POST['name'])){
-        $mail->FromName = $_POST['name'];
-    }else{
-        $mail->FromName = "Site Visitor";
-    }
-
-    foreach ($addresses[0] as $key => $value) {
-        $mail->addAddress($value[0]);
-    }
-
-    $mail->CharSet = 'utf-8';
-    $mail->Subject = $subject;
-    $mail->MsgHTML($template);
     $mail->send();
-
-    die('MF000');
-} catch (phpmailerException $e) {
-    die('MF254');
+    echo 'Mensaje enviado correctamente';
+    
+    // Redirigir al índice después de 2 segundos
+    header("Location: /index.html");
+    exit(); // Asegúrate de usar exit después de header para detener la ejecución del script
 } catch (Exception $e) {
-    die('MF255');
+    echo "El mensaje no pudo ser enviado. Error: {$mail->ErrorInfo}";
 }
+?>
